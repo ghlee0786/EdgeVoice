@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" width="960" height="330" font-family="'Segoe UI','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <!-- 음성 흐름: 호출어 → 듣기 → STT → LLM·도구 → TTS, 끼어들기·중단. 단계가 차례로 켜지고 점이 흐른다(CSS·SMIL, 자바스크립트 없음) -->
+  <style>
+    .box { fill: #1f2430; stroke: #3a4150; stroke-width: 2; }
+    .t { fill: #f4f4f5; font-size: 22px; font-weight: 700; text-anchor: middle; }
+    .s { fill: #a1a1aa; font-size: 14px; text-anchor: middle; }
+    .glow { opacity: 0; animation: hl 7.5s infinite; }
+    .g1 { animation-delay: 0s; } .g2 { animation-delay: 1.5s; } .g3 { animation-delay: 3s; }
+    .g4 { animation-delay: 4.5s; } .g5 { animation-delay: 6s; }
+    @keyframes hl { 0% { opacity: 0; } 3% { opacity: 1; } 17% { opacity: 1; } 21% { opacity: 0; } 100% { opacity: 0; } }
+    .arrow { stroke: #52525b; stroke-width: 3; fill: none; marker-end: url(#head); }
+    .flow { stroke-dasharray: 8 8; animation: dash 1s linear infinite; }
+    @keyframes dash { to { stroke-dashoffset: -16; } }
+    .note { fill: #27272a; stroke: #3f3f46; }
+  </style>
+  <defs>
+    <marker id="head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#71717a"/>
+    </marker>
+    <marker id="headRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#ef4444"/>
+    </marker>
+  </defs>
+  <rect width="960" height="330" rx="18" fill="#111318"/>
+
+  <!-- 단계 상자 (색 = 파형 창의 단계 색) -->
+  <g transform="translate(30 60)">
+    <rect class="glow g1" x="-6" y="-6" width="152" height="102" rx="20" fill="#71717a" opacity="0"/>
+    <rect class="box" width="140" height="90" rx="16"/>
+    <text class="t" x="70" y="40">호출어</text><text class="s" x="70" y="66">"Hey Jarvis"</text>
+  </g>
+  <g transform="translate(215 60)">
+    <rect class="glow g2" x="-6" y="-6" width="152" height="102" rx="20" fill="#3b82f6"/>
+    <rect class="box" width="140" height="90" rx="16"/>
+    <text class="t" x="70" y="40">듣기</text><text class="s" x="70" y="66">무음이면 말 끝</text>
+  </g>
+  <g transform="translate(400 60)">
+    <rect class="glow g3" x="-6" y="-6" width="152" height="102" rx="20" fill="#06b6d4"/>
+    <rect class="box" width="140" height="90" rx="16"/>
+    <text class="t" x="70" y="40">STT</text><text class="s" x="70" y="66">음성 → 글자</text>
+  </g>
+  <g transform="translate(585 60)">
+    <rect class="glow g4" x="-6" y="-6" width="152" height="102" rx="20" fill="#a78bfa"/>
+    <rect class="box" width="140" height="90" rx="16"/>
+    <text class="t" x="70" y="40">LLM·도구</text><text class="s" x="70" y="66">답·검색·PC 조작</text>
+  </g>
+  <g transform="translate(770 60)">
+    <rect class="glow g5" x="-6" y="-6" width="152" height="102" rx="20" fill="#22c55e"/>
+    <rect class="box" width="140" height="90" rx="16"/>
+    <text class="t" x="70" y="40">TTS</text><text class="s" x="70" y="66">답을 음성으로</text>
+  </g>
+
+  <path class="arrow" d="M172 105H210"/>
+  <path class="arrow" d="M357 105H395"/>
+  <path class="arrow" d="M542 105H580"/>
+  <path class="arrow" d="M727 105H765"/>
+
+  <!-- 흐르는 점 -->
+  <circle r="7" fill="#fafafa">
+    <animateMotion dur="7.5s" repeatCount="indefinite" path="M100 105H840"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.95;1" dur="7.5s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- 끼어들기: 답하는 중에 다시 부르면 바로 듣기로 -->
+  <path class="flow" d="M840 156V200H285V160" stroke="#ef4444" stroke-width="3" fill="none" marker-end="url(#headRed)"/>
+  <text x="562" y="192" fill="#fca5a5" font-size="15" text-anchor="middle">끼어들기 — 답하는 중에 말을 걸면 멈추고 바로 듣기</text>
+
+  <!-- 아래 안내 -->
+  <g transform="translate(30 236)">
+    <rect class="note" width="430" height="64" rx="12"/>
+    <text x="20" y="27" fill="#e4e4e7" font-size="16" font-weight="700">⏹ 중단</text>
+    <text x="20" y="49" fill="#a1a1aa" font-size="14">파형 창을 누르면 듣기 시작 · 한 번 더 누르면 멈춤</text>
+  </g>
+  <g transform="translate(500 236)">
+    <rect class="note" width="430" height="64" rx="12"/>
+    <text x="20" y="27" fill="#e4e4e7" font-size="16" font-weight="700">💬 채팅과 한 세션</text>
+    <text x="20" y="49" fill="#a1a1aa" font-size="14">음성 대화도 채팅 창에 쌓이고 이어서 물어볼 수 있음</text>
+  </g>
+  <text x="30" y="36" fill="#e4e4e7" font-size="18" font-weight="700">음성 비서 흐름</text>
+</svg>

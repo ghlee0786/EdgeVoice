@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" width="960" height="380" font-family="'Segoe UI','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <!-- 설치 = 앱 + AI 서버: 구성 요소를 고르면 서버 쪽은 .env → 모델 받기 → 이미지 받기 → 시작까지 자동. 단계가 차례로 켜진다 -->
+  <style>
+    .box { fill: #1f2430; stroke: #3a4150; stroke-width: 2; }
+    .t { fill: #f4f4f5; font-size: 16px; font-weight: 700; text-anchor: middle; }
+    .s { fill: #a1a1aa; font-size: 12px; text-anchor: middle; }
+    .h { fill: #e4e4e7; font-size: 18px; font-weight: 700; }
+    .arrow { stroke: #71717a; stroke-width: 3; fill: none; marker-end: url(#head); stroke-dasharray: 8 8; animation: dash 1s linear infinite; }
+    @keyframes dash { to { stroke-dashoffset: -16; } }
+    .step { animation: step 10s infinite; }
+    .p1 { animation-delay: 0s; } .p2 { animation-delay: 2s; } .p3 { animation-delay: 4s; } .p4 { animation-delay: 6s; } .p5 { animation-delay: 8s; }
+    @keyframes step { 0% { stroke: #3a4150; } 3%, 18% { stroke: #22c55e; } 22%, 100% { stroke: #3a4150; } }
+    .bar { animation: fill 10s infinite; animation-delay: 2s; }
+    @keyframes fill { 0% { width: 0; } 18% { width: 150px; } 100% { width: 150px; } }
+    @media (prefers-reduced-motion: reduce) { .step, .bar { animation: none; } .bar { width: 150px; } }
+  </style>
+  <defs>
+    <marker id="head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#71717a"/>
+    </marker>
+  </defs>
+  <rect width="960" height="380" rx="18" fill="#111318"/>
+  <text class="h" x="24" y="38">설치 = 앱 + AI 서버</text>
+
+  <!-- 설치 프로그램과 구성 요소 -->
+  <g transform="translate(24 70)"><rect class="box" width="180" height="96" rx="14"/>
+    <text class="t" x="90" y="38">EdgeVoice-Setup</text><text class="s" x="90" y="60">특징 소개 · 연결 설정</text><text class="s" x="90" y="78">관리자 권한 없음</text></g>
+  <g transform="translate(250 56)"><rect width="200" height="56" rx="12" fill="#0f6cbd"/>
+    <text x="100" y="26" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">☑ 앱</text>
+    <text x="100" y="44" fill="#dbeafe" font-size="12" text-anchor="middle">트레이 · 파형 창 · 채팅</text></g>
+  <g transform="translate(250 124)"><rect width="200" height="56" rx="12" fill="#14532d" stroke="#22c55e" stroke-width="2"/>
+    <text x="100" y="26" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">☑ AI 서버 (Docker)</text>
+    <text x="100" y="44" fill="#bbf7d0" font-size="12" text-anchor="middle">이 PC 에서 AI 를 돌릴 때</text></g>
+  <path class="arrow" d="M206 105C225 105 225 84 246 84"/><path class="arrow" d="M206 130C225 130 225 152 246 152"/>
+  <text class="s" x="350" y="204">서버가 다른 PC 면 앱만 + 주소 입력</text>
+
+  <!-- 서버 준비 단계 (setup-server.ps1) -->
+  <g transform="translate(24 236)">
+    <rect class="box step p1" width="160" height="100" rx="14"/>
+    <text class="t" x="80" y="38">확인</text><text class="s" x="80" y="60">Docker Desktop</text><text class="s" x="80" y="78">NVIDIA GPU</text></g>
+  <g transform="translate(210 236)">
+    <rect class="box step p2" width="160" height="100" rx="14"/>
+    <text class="t" x="80" y="38">.env</text><text class="s" x="80" y="60">비밀번호 무작위</text><text class="s" x="80" y="78">HF 토큰(선택)</text></g>
+  <g transform="translate(396 236)">
+    <rect class="box step p3" width="170" height="100" rx="14"/>
+    <text class="t" x="85" y="32">모델 받기</text><text class="s" x="85" y="52">약 18GB · 남은 크기 표시</text>
+    <rect x="10" y="66" width="150" height="10" rx="5" fill="#3f3f46"/>
+    <rect class="bar" x="10" y="66" width="150" height="10" rx="5" fill="#22c55e"/>
+    <text class="s" x="85" y="92">있으면 건너뜀</text></g>
+  <g transform="translate(592 236)">
+    <rect class="box step p4" width="160" height="100" rx="14"/>
+    <text class="t" x="80" y="38">이미지 받기</text><text class="s" x="80" y="60">ghcr.io · 릴리스 태그</text><text class="s" x="80" y="78">docker compose pull</text></g>
+  <g transform="translate(778 236)">
+    <rect class="box step p5" width="158" height="100" rx="14"/>
+    <text class="t" x="79" y="38">시작</text><text class="s" x="79" y="60">docker compose up -d</text><text class="s" x="79" y="78">앱에 "AI 준비 중"</text></g>
+  <path class="arrow" d="M186 286H206"/><path class="arrow" d="M372 286H392"/><path class="arrow" d="M568 286H588"/><path class="arrow" d="M754 286H774"/>
+  <path class="arrow" d="M248 170H228V214H104V230"/>
+
+  <!-- 업데이트 -->
+  <g transform="translate(520 56)"><rect width="416" height="124" rx="14" fill="none" stroke="#52525b" stroke-dasharray="6 5"/>
+    <text x="20" y="30" fill="#e4e4e7" font-size="15" font-weight="700">새 릴리스가 나오면</text>
+    <text x="20" y="56" fill="#a1a1aa" font-size="13">앱: 옛 파일을 지우고 새로 설치</text>
+    <text x="20" y="78" fill="#a1a1aa" font-size="13">서버: 이미지 태그를 올려 pull · up -d</text>
+    <text x="20" y="100" fill="#a1a1aa" font-size="13">모델 · DB · 설정은 그대로</text></g>
+</svg>

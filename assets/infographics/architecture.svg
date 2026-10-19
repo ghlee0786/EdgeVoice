@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" width="960" height="440" font-family="'Segoe UI','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <!-- 서비스 구성: 데스크톱 앱 ↔ 백엔드·오디오 게이트웨이 ↔ (Redis 이벤트) ↔ 오케스트레이터·STT·LLM·TTS·RAG, 이 PC 의 MCP -->
+  <style>
+    .box { fill: #1f2430; stroke: #3a4150; stroke-width: 2; }
+    .app { fill: #0f6cbd; }
+    .t { fill: #f4f4f5; font-size: 16px; font-weight: 700; text-anchor: middle; }
+    .s { fill: #a1a1aa; font-size: 12px; text-anchor: middle; }
+    .link { stroke: #60a5fa; stroke-width: 3; fill: none; stroke-dasharray: 7 7; animation: dash 0.9s linear infinite; }
+    .tool { stroke: #f59e0b; stroke-width: 2.5; fill: none; stroke-dasharray: 6 6; animation: dash 1.2s linear infinite; }
+    @keyframes dash { to { stroke-dashoffset: -14; } }
+    .ev { fill: #f87171; }
+  </style>
+  <rect width="960" height="440" rx="18" fill="#111318"/>
+  <text x="24" y="36" fill="#e4e4e7" font-size="18" font-weight="700">서비스 구성 (docker compose)</text>
+
+  <!-- 데스크톱 앱 -->
+  <g transform="translate(24 160)"><rect class="app" width="170" height="110" rx="16"/>
+    <text class="t" x="85" y="42">데스크톱 앱</text>
+    <text x="85" y="66" fill="#dbeafe" font-size="12" text-anchor="middle">트레이 · 파형 창</text>
+    <text x="85" y="84" fill="#dbeafe" font-size="12" text-anchor="middle">채팅 · 지식 · 설정</text></g>
+
+  <!-- 입구 -->
+  <g transform="translate(240 90)"><rect class="box" width="170" height="74" rx="14"/>
+    <text class="t" x="85" y="32">backend</text><text class="s" x="85" y="54">:11000 REST · SSE</text></g>
+  <g transform="translate(240 270)"><rect class="box" width="170" height="74" rx="14"/>
+    <text class="t" x="85" y="32">audio-gateway</text><text class="s" x="85" y="54">:11008 마이크·스피커</text></g>
+  <path class="link" d="M194 195C215 195 215 127 238 127"/>
+  <path class="link" d="M194 235C215 235 215 307 238 307"/>
+
+  <!-- Redis 이벤트 버스 -->
+  <rect x="440" y="60" width="28" height="350" rx="10" fill="#3f1d1d" stroke="#7f1d1d"/>
+  <text x="454" y="235" fill="#fca5a5" font-size="13" font-weight="700" text-anchor="middle" transform="rotate(-90 454 235)">Redis 이벤트</text>
+  <circle class="ev" cx="454" r="5"><animate attributeName="cy" values="70;400;70" dur="4s" repeatCount="indefinite"/></circle>
+  <circle class="ev" cx="454" r="5"><animate attributeName="cy" values="400;70;400" dur="4s" repeatCount="indefinite"/></circle>
+  <path d="M412 127H438M412 307H438" stroke="#7f1d1d" stroke-width="3"/>
+
+  <!-- AI 서비스 -->
+  <g transform="translate(500 60)"><rect class="box" width="200" height="70" rx="14"/>
+    <text class="t" x="100" y="30">orchestrator</text><text class="s" x="100" y="51">대화 흐름 · 도구 실행</text></g>
+  <g transform="translate(730 60)"><rect class="box" width="200" height="70" rx="14"/>
+    <text class="t" x="100" y="30">wake-word</text><text class="s" x="100" y="51">hey_jarvis · alexa</text></g>
+  <g transform="translate(500 145)"><rect class="box" width="200" height="70" rx="14"/>
+    <text class="t" x="100" y="30">stt</text><text class="s" x="100" y="51">faster-whisper · GPU</text></g>
+  <g transform="translate(730 145)"><rect class="box" width="200" height="70" rx="14"/>
+    <text class="t" x="100" y="30">llm</text><text class="s" x="100" y="51">vLLM · Qwen3.5 9B · GPU</text></g>
+  <g transform="translate(500 230)"><rect class="box" width="200" height="70" rx="14"/>
+    <text class="t" x="100" y="30">tts</text><text class="s" x="100" y="51">MeloTTS · Kokoro · Edge</text></g>
+  <g transform="translate(730 230)"><rect class="box" width="200" height="70" rx="14"/>
+    <text class="t" x="100" y="30">rag · embedding</text><text class="s" x="100" y="51">bge-m3 · PostgreSQL pgvector</text></g>
+  <path d="M470 95H498M470 180H498M470 265H498" stroke="#7f1d1d" stroke-width="3"/>
+
+  <!-- 이 PC 의 MCP 서버 (브라우저·컴퓨터 조작) -->
+  <g transform="translate(500 330)"><rect width="430" height="80" rx="14" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="215" y="30" fill="#fcd34d" font-size="16" font-weight="700" text-anchor="middle">이 PC 의 MCP 서버</text>
+    <text class="s" x="215" y="54">browser :8931 (Playwright · 크롬)  ·  desktop :8932 (앱 열기 · 그림판)</text></g>
+  <path class="tool" d="M498 112H484V372H498"/>
+</svg>

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360" font-family="'Segoe UI','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <!-- 설치·업데이트 흐름: 위 = 처음 설치, 아래 = 릴리스가 나오면 자동 업데이트 -->
+  <style>
+    .box { fill: #1f2430; stroke: #3a4150; stroke-width: 2; }
+    .t { fill: #f4f4f5; font-size: 17px; font-weight: 700; text-anchor: middle; }
+    .s { fill: #a1a1aa; font-size: 13px; text-anchor: middle; }
+    .h { fill: #e4e4e7; font-size: 18px; font-weight: 700; }
+    .arrow { stroke: #71717a; stroke-width: 3; fill: none; marker-end: url(#head); stroke-dasharray: 8 8; animation: dash 1s linear infinite; }
+    @keyframes dash { to { stroke-dashoffset: -16; } }
+    .pop { animation: pop 6s infinite; transform-box: fill-box; transform-origin: center; }
+    @keyframes pop { 0%, 55% { opacity: 0; transform: scale(0.9); } 62%, 92% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+    .ok { fill: #0f6cbd; }
+    @media (prefers-reduced-motion: reduce) { .pop { animation: none; } }
+  </style>
+  <defs>
+    <marker id="head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#71717a"/>
+    </marker>
+  </defs>
+  <rect width="960" height="360" rx="18" fill="#111318"/>
+
+  <text class="h" x="30" y="38">처음 설치</text>
+  <g transform="translate(30 56)"><rect class="box" width="200" height="76" rx="14"/>
+    <text class="t" x="100" y="33">EdgeVoice-Setup.exe</text><text class="s" x="100" y="56">관리자 권한 필요 없음</text></g>
+  <g transform="translate(270 56)"><rect class="box" width="200" height="76" rx="14"/>
+    <text class="t" x="100" y="33">특징 소개</text><text class="s" x="100" y="56">화면을 넘겨 보며</text></g>
+  <g transform="translate(510 56)"><rect class="box" width="200" height="76" rx="14"/>
+    <text class="t" x="100" y="33">연결 설정</text><text class="s" x="100" y="56">서버 주소 · 업데이트 확인</text></g>
+  <g transform="translate(750 56)"><rect class="box" width="180" height="76" rx="14"/>
+    <text class="t" x="90" y="33">설치 · 실행</text><text class="s" x="90" y="56">트레이에 상주</text></g>
+  <path class="arrow" d="M232 94H266"/><path class="arrow" d="M472 94H506"/><path class="arrow" d="M712 94H746"/>
+
+  <text class="h" x="30" y="184">새 버전이 나오면</text>
+  <g transform="translate(30 202)"><rect class="box" width="170" height="76" rx="14"/>
+    <text class="t" x="85" y="33">v1.2.3 태그</text><text class="s" x="85" y="56">GitHub Actions 빌드</text></g>
+  <g transform="translate(225 202)"><rect class="box" width="170" height="76" rx="14"/>
+    <text class="t" x="85" y="33">Releases</text><text class="s" x="85" y="56">Setup.exe 자산</text></g>
+  <g transform="translate(420 202)"><rect class="box" width="170" height="76" rx="14"/>
+    <text class="t" x="85" y="33">앱이 확인</text><text class="s" x="85" y="56">시작할 때 한 번</text></g>
+  <g transform="translate(615 202)"><rect class="box" width="140" height="76" rx="14"/>
+    <text class="t" x="70" y="33">앱 닫기</text><text class="s" x="70" y="56">옛 파일 지움</text></g>
+  <g transform="translate(780 202)"><rect class="box" width="150" height="76" rx="14"/>
+    <text class="t" x="75" y="33">새로 설치</text><text class="s" x="75" y="56">설정은 그대로</text></g>
+  <path class="arrow" d="M202 240H221"/><path class="arrow" d="M397 240H416"/><path class="arrow" d="M592 240H611"/><path class="arrow" d="M757 240H776"/>
+
+  <!-- "업데이트할까요?" 창이 뜬다 -->
+  <g class="pop">
+    <rect x="395" y="290" width="220" height="58" rx="10" fill="#fafafa"/>
+    <text x="410" y="314" fill="#18181b" font-size="14" font-weight="700">업데이트할까요?</text>
+    <rect class="ok" x="520" y="318" width="80" height="22" rx="5"/>
+    <text x="560" y="334" fill="#fff" font-size="13" text-anchor="middle">확인</text>
+  </g>
+</svg>

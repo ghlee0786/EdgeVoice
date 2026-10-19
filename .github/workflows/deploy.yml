@@ -1,0 +1,74 @@
+name: Deploy (AI 서버)
+
+# CD — 새 릴리스를 AI 서버(GPU 가 있는 Windows PC)에 올린다. 기본은 꺼져 있다.
+# 켜는 법(README 'CD 켜는 법'):
+#   1. 서버 PC 에 self-hosted runner 등록 (라벨: edgevoice-server)
+#   2. 저장소 변수 DEPLOY_ENABLED=true, EDGEVOICE_SERVER_DIR=<AI 서버 폴더> (설치 프로그램이 만든 폴더)
+#   3. (선택) Settings › Environments › production 에 승인자 지정
+# 서버에서 도는 일은 deploy/update-server.ps1 — 설치 프로그램의 [AI 서버] 업데이트와 같은 스크립트다
+# (서버 파일 교체 → 태그 바꾸기 → pull → up -d → health 확인, 실패하면 이전 태그로 되돌림).
+
+on:
+  # 사람이(또는 PAT 로) 릴리스를 publish 했을 때
+  release:
+    types: [published]
+  # release.yml(GITHUB_TOKEN 으로 릴리스를 만든다)이 끝났을 때 — GITHUB_TOKEN 이 만든 release 이벤트는 다른 워크플로를 부르지 않는다
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 올릴 릴리스 태그 (예 v1.2.3)
+        required: true
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: AI 서버 업데이트
+    if: >-
+      vars.DEPLOY_ENABLED == 'true' &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    runs-on: [self-hosted, windows, edgevoice-server]
+    environment: production
+    timeout-minutes: 60
+    steps:
+      - name: Version
+        id: ver
+        shell: powershell
+        run: |
+          $v = "${{ inputs.version || github.event.release.tag_name || github.event.workflow_run.head_branch }}"
+          if ($v -notmatch '^v\d+\.\d+\.\d+') { throw "릴리스 태그가 아닙니다: '$v'" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ver.outputs.version }}
+      # 릴리스의 이미지 job 이 ghcr 에 다 올릴 때까지 (최대 30분)
+      - name: Wait for images
+        shell: powershell
+        run: |
+          $owner = "${{ github.repository_owner }}".ToLower()
+          foreach ($svc in "backend", "rag", "orchestrator", "wake-word", "audio-gateway", "embedding", "stt", "tts") {
+            $image = "ghcr.io/$owner/edgevoice-${svc}:${{ steps.ver.outputs.version }}"
+            for ($i = 0; $i -lt 60; $i++) {
+              docker manifest inspect $image *> $null
+              if ($LASTEXITCODE -eq 0) { break }
+              Start-Sleep -Seconds 30
+            }
+            if ($LASTEXITCODE -ne 0) { throw "이미지가 없습니다: $image" }
+          }
+      - name: Update server
+        shell: powershell
+        run: |
+          $dir = "${{ vars.EDGEVOICE_SERVER_DIR }}"
+          if (-not (Test-Path (Join-Path $dir ".env"))) { throw "EDGEVOICE_SERVER_DIR 에 .env 가 없습니다: '$dir' (설치 프로그램으로 AI 서버를 먼저 설치)" }
+          # 새 릴리스의 update-server.ps1 을 서버 폴더로 옮긴 뒤 그것을 실행한다
+          Copy-Item deploy/*.ps1 $dir -Force
+          & (Join-Path $dir "update-server.ps1") -Version "${{ steps.ver.outputs.version }}" -SourceDir "$env:GITHUB_WORKSPACE"
+          exit $LASTEXITCODE

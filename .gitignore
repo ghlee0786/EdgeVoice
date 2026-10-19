@@ -1,0 +1,100 @@
+# NATS JetStream Data
+db/jetstream/*/
+
+# Backups
+backups/
+*.tar.gz
+*.zip
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Prds
+Prds/
+prds/
+Prd/
+prd/
+*prd.md
+prd*.md
+plan.md
+claude.md
+.claude/
+.claude/*
+.Claude/
+
+
+# docs
+Docs/
+docs/
+Doc/
+doc/
+
+# Model weights (download via scripts/, never commit) — 루트 폴더만.
+# 'models/' 로 쓰면 services/backend/app/models/ 같은 코드 패키지까지 빠진다.
+/models/
+
+# Runtime / tool output
+output/
+.playwright-mcp/
+.pytest_cache/
+__pycache__/
+
+# Legacy harness installer
+claude-skill-harness-v2.1.1/
+
+# 개인·프라이빗 데이터 (사용자 요청 2026-10-19: RAG·지식 문서 같은 개인 데이터는 올리지 않는다)
+# 실제 지식 문서·조각·대화 기록·로그는 Docker 볼륨(PostgreSQL)에 있다 — 여기에 꺼내 두는 것도 막는다.
+# 시험용 가상 지식(tests/scenarios/fixtures/knowledge/)은 지어낸 데이터라 그대로 둔다.
+/data/
+/uploads/
+/private/
+/knowledge/
+/rag_data/
+/rag-data/
+pgdata/
+postgres-data/
+# DB 덤프·백업
+*.dump
+*.sql.gz
+*.bak
+*.sqlite
+*.sqlite3
+# 저장소 맨 위에 둔 개인 문서(지식으로 올리려고 꺼내 둔 것)
+/*.pdf
+/*.docx
+/*.doc
+/*.pptx
+/*.ppt
+/*.xlsx
+/*.xls
+/*.hwp
+/*.hwpx
+/*.csv
+
+# 설치 프로그램 빌드 산출물 (dotnet publish · Inno Setup)
+/publish/

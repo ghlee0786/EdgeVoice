@@ -1,0 +1,523 @@
+# EdgeVoice AI 서버 — 배포용 (설치 프로그램의 "AI 서버" 구성 요소가 이 폴더에 둔다)
+#
+# docker-compose.dev.yml 과 서비스·환경변수·볼륨이 같고, 다른 점만:
+#   - 소스에서 build 하지 않고 릴리스 이미지를 받는다: ghcr.io/ghlee0786/edgevoice-<서비스>:${EDGEVOICE_VERSION}
+#   - DB 비밀번호·SearXNG 비밀은 .env 에서 (설치 때 무작위로 만든다). PostgreSQL·Redis 포트는 밖으로 열지 않는다.
+#   - container_name 을 두지 않는다 (개발용 ev-* 컨테이너와 겹치지 않게).
+# 이 파일은 tests/deploy/test_deploy_compose.py 가 dev compose 와 같은지 확인한다.
+#
+#   docker compose pull && docker compose up -d        (setup-server.ps1 이 모델 받기부터 해 준다)
+name: edgevoice
+services:
+  stt:
+    image: ${EDGEVOICE_REGISTRY:-ghcr.io/ghlee0786}/edgevoice-stt:${EDGEVOICE_VERSION:-latest}
+    runtime: nvidia
+    environment:
+    - NVIDIA_VISIBLE_DEVICES=all
+    - MODEL_SIZE=${STT_MODEL:-large-v3-turbo}
+    - STT_ENVIRONMENT=cpu
+    - DEVICE=${STT_DEVICE:-cuda}
+    - COMPUTE_TYPE=${STT_COMPUTE:-float16}
+    - LOG_LEVEL=INFO
+    - BACKEND_URL=http://backend:8000
+    - PIPELINE_LOGGING_ENABLED=true
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+    volumes:
+    - ${MODEL_CACHE_PATH:-./models}/stt:/models
+    - stt-hf-cache:/root/.cache/huggingface
+    - ./logs/stt:/app/logs
+    - ./shared:/app/shared:ro
+    ports:
+    - 11001:8001
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities:
+            - gpu
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://localhost:8001/health')
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  llm:
+    image: vllm/vllm-openai:latest
+    runtime: nvidia
+    environment:
+    - NVIDIA_VISIBLE_DEVICES=all
+    - HF_TOKEN=${HF_TOKEN:-}
+    - MODEL_NAME=RedHatAI/Qwen3.5-9B-quantized.w4a16
+    - TENSOR_PARALLEL_SIZE=1
+    - GPU_MEMORY_UTILIZATION=0.9
+    - DEVICE=cuda
+    - PYTHONPATH=/opt/edgevoice
+    - EDGEVOICE_BLOCK_HAN=${EDGEVOICE_BLOCK_HAN:-1}
+    volumes:
+    - ${MODEL_CACHE_PATH:-./models}/llm:/root/.cache/huggingface
+    - ./logs/llm:/app/logs
+    - ./services/llm/edgevoice_guard:/opt/edgevoice/edgevoice_guard:ro
+    ports:
+    - 11003:11003
+    command:
+    - --model
+    - ${LLM_MODEL:-RedHatAI/Qwen3.5-9B-quantized.w4a16}
+    - --dtype
+    - auto
+    - --max-model-len
+    - ${LLM_MAX_MODEL_LEN:-16384}
+    - --gpu-memory-utilization
+    - ${LLM_GPU_UTIL:-0.62}
+    - --max-num-seqs
+    - '16'
+    - --trust-remote-code
+    - --port
+    - '11003'
+    - --enable-auto-tool-choice
+    - --tool-call-parser
+    - ${LLM_TOOL_CALL_PARSER:-qwen3_coder}
+    - --reasoning-parser
+    - ${LLM_REASONING_PARSER:-qwen3}
+    - --default-chat-template-kwargs
+    - '{"enable_thinking": false}'
+    - --limit-mm-per-prompt
+    - '{"image": 2}'
+    - --exclude-tools-when-tool-choice-none
+    - --logits-processors
+    - edgevoice_guard.han_guard:HanBlockLogitsProcessor
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities:
+            - gpu
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:11003/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  vision:
+    image: vllm/vllm-openai:latest
+    profiles:
+    - separate-vision
+    runtime: nvidia
+    depends_on:
+      llm:
+        condition: service_healthy
+    environment:
+    - NVIDIA_VISIBLE_DEVICES=all
+    - HF_TOKEN=${HF_TOKEN:-}
+    - PYTHONPATH=/opt/edgevoice
+    - EDGEVOICE_BLOCK_HAN=${EDGEVOICE_BLOCK_HAN:-1}
+    volumes:
+    - ${MODEL_CACHE_PATH:-./models}/llm:/root/.cache/huggingface
+    - ./services/llm/edgevoice_guard:/opt/edgevoice/edgevoice_guard:ro
+    ports:
+    - 11009:11009
+    command:
+    - --model
+    - ${VISION_MODEL:-Qwen/Qwen2.5-VL-3B-Instruct-AWQ}
+    - --max-model-len
+    - ${VISION_MAX_MODEL_LEN:-8192}
+    - --gpu-memory-utilization
+    - ${VISION_GPU_UTIL:-0.24}
+    - --limit-mm-per-prompt
+    - '{"image": 2}'
+    - --mm-processor-kwargs
+    - '{"max_pixels": 802816}'
+    - --enforce-eager
+    - --logits-processors
+    - edgevoice_guard.han_guard:HanBlockLogitsProcessor
+    - --port
+    - '11009'
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities:
+            - gpu
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:11009/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  tts:
+    image: ${EDGEVOICE_REGISTRY:-ghcr.io/ghlee0786}/edgevoice-tts:${EDGEVOICE_VERSION:-latest}
+    runtime: nvidia
+    environment:
+    - NVIDIA_VISIBLE_DEVICES=all
+    - MODEL_PATH=/models/kokoro
+    - DEVICE=cuda
+    - LOG_LEVEL=INFO
+    - TTS_ENGINE=${TTS_ENGINE:-melo}
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+    - REDIS_ENABLED=true
+    - BACKEND_URL=http://backend:8000
+    - PIPELINE_LOGGING_ENABLED=true
+    volumes:
+    - ${MODEL_CACHE_PATH:-./models}/tts/kokoro:/models
+    - tts-hf-cache:/root/.cache/huggingface
+    - ./logs/tts:/app/logs
+    - ./shared:/app/shared:ro
+    ports:
+    - 11002:8002
+    depends_on:
+    - redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities:
+            - gpu
+    healthcheck:
+      test:
+      - CMD
+      - python3
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://localhost:8002/health')
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  embedding:
+    image: ${EDGEVOICE_REGISTRY:-ghcr.io/ghlee0786}/edgevoice-embedding:${EDGEVOICE_VERSION:-latest}
+    runtime: nvidia
+    environment:
+    - NVIDIA_VISIBLE_DEVICES=all
+    - MODEL_NAME=BAAI/bge-m3
+    - DEVICE=cuda
+    - LOG_LEVEL=INFO
+    volumes:
+    - ${MODEL_CACHE_PATH:-./models}/embedding:/models
+    - ./logs/embedding:/app/logs
+    ports:
+    - 11004:8004
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities:
+            - gpu
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://localhost:8004/health')
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  wake-word:
+    image: ${EDGEVOICE_REGISTRY:-ghcr.io/ghlee0786}/edgevoice-wake-word:${EDGEVOICE_VERSION:-latest}
+    environment:
+    - MODEL_PATH=/models/openwakeword
+    - THRESHOLD=0.3
+    - WAKE_WORD_THRESHOLD=0.3
+    - STT_URL=http://stt:8001
+    - LOG_LEVEL=INFO
+    - BACKEND_URL=http://backend:8000
+    - PIPELINE_LOGGING_ENABLED=true
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+    volumes:
+    - ${MODEL_CACHE_PATH:-./models}/wake_word:/models
+    - ./logs/wake_word:/app/logs
+    - ./shared:/app/shared:ro
+    ports:
+    - 11005:8005
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://localhost:8005/health')
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  rag:
+    image: ${EDGEVOICE_REGISTRY:-ghcr.io/ghlee0786}/edgevoice-rag:${EDGEVOICE_VERSION:-latest}
+    environment:
+    - EMBEDDING_SERVICE_URL=http://embedding:8004
+    - DATABASE_URL=postgresql://edgevoice:${POSTGRES_PASSWORD}@postgres:5432/edgevoice
+    - VECTOR_DB_PATH=/data/vectordb
+    - LOG_LEVEL=INFO
+    volumes:
+    - vectordb-data:/data/vectordb
+    - ./logs/rag:/app/logs
+    ports:
+    - 11006:8006
+    depends_on:
+      embedding:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://localhost:8006/health')
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  orchestrator:
+    image: ${EDGEVOICE_REGISTRY:-ghcr.io/ghlee0786}/edgevoice-orchestrator:${EDGEVOICE_VERSION:-latest}
+    environment:
+    - STT_SERVICE_URL=http://stt:8001
+    - LLM_SERVICE_URL=http://llm:11003
+    - TTS_SERVICE_URL=http://tts:8002
+    - RAG_SERVICE_URL=http://rag:8006
+    - VLLM_BASE_URL=http://llm:11003
+    - LLM_MODEL_NAME=${LLM_MODEL:-RedHatAI/Qwen3.5-9B-quantized.w4a16}
+    - LLM_MAX_MODEL_LEN=${LLM_MAX_MODEL_LEN:-16384}
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+    - LOG_LEVEL=INFO
+    - BACKEND_URL=http://backend:8000
+    - PIPELINE_LOGGING_ENABLED=true
+    - INTERNET_TOOLS_ENABLED=${INTERNET_TOOLS_ENABLED:-false}
+    - SEARCH_PROVIDER=${SEARCH_PROVIDER:-searxng}
+    - SEARXNG_URL=${SEARXNG_URL:-}
+    - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+    - NAVER_CLIENT_ID=${NAVER_CLIENT_ID:-}
+    - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET:-}
+    - MCP_CONFIG_PATH=${MCP_CONFIG_PATH:-}
+    volumes:
+    - ./logs/orchestrator:/app/logs
+    - ./config/mcp:/app/config/mcp:ro
+    - ./shared:/app/shared:ro
+    ports:
+    - 11007:8007
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://localhost:8007/health')
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  audio-gateway:
+    image: ${EDGEVOICE_REGISTRY:-ghcr.io/ghlee0786}/edgevoice-audio-gateway:${EDGEVOICE_VERSION:-latest}
+    environment:
+    - WAKE_WORD_SERVICE_URL=http://wake-word:8005
+    - ORCHESTRATOR_URL=http://orchestrator:8007
+    - STT_URL=http://stt:8001
+    - VAD_THRESHOLD=0.5
+    - LOG_LEVEL=INFO
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+    - BACKEND_URL=http://backend:8000
+    - PIPELINE_LOGGING_ENABLED=true
+    - USE_INTERNAL_MICROPHONE=${USE_INTERNAL_MICROPHONE:-false}
+    - AUDIO_INPUT_DEVICE=${AUDIO_INPUT_DEVICE:-default}
+    - AUDIO_OUTPUT_DEVICE=${AUDIO_OUTPUT_DEVICE:-default}
+    - AUDIO_SAMPLE_RATE=${AUDIO_SAMPLE_RATE:-16000}
+    - AUDIO_CHUNK_SIZE=${AUDIO_CHUNK_SIZE:-1600}
+    volumes:
+    - ./logs/audio_gateway:/app/logs
+    - ./shared:/app/shared:ro
+    ports:
+    - 11008:8008
+    depends_on:
+      redis:
+        condition: service_healthy
+      wake-word:
+        condition: service_healthy
+      orchestrator:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://localhost:8008/health')
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  backend:
+    image: ${EDGEVOICE_REGISTRY:-ghcr.io/ghlee0786}/edgevoice-backend:${EDGEVOICE_VERSION:-latest}
+    environment:
+    - DATABASE_URL=postgresql://edgevoice:${POSTGRES_PASSWORD}@postgres:5432/edgevoice
+    - REDIS_URL=redis://redis:6379
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+    - ORCHESTRATOR_URL=http://orchestrator:8007
+    - RAG_SERVICE_URL=http://rag:8006
+    - VLLM_BASE_URL=http://llm:11003
+    - VISION_URL=${VISION_URL:-http://llm:11003}
+    - VISION_MODEL=${LLM_MODEL:-RedHatAI/Qwen3.5-9B-quantized.w4a16}
+    - LLM_MAX_MODEL_LEN=${LLM_MAX_MODEL_LEN:-16384}
+    - TTS_SERVICE_URL=http://tts:8002
+    - STT_SERVICE_URL=http://stt:8001
+    - WAKE_WORD_SERVICE_URL=http://wake-word:8005
+    - EMBEDDING_SERVICE_URL=http://embedding:8004
+    - AUDIO_GATEWAY_URL=http://audio-gateway:8008
+    - AUDIO_GATEWAY_SERVICE_URL=http://audio-gateway:8008
+    - RAG_ENABLED=true
+    - HISTORY_ENABLED=true
+    - LOG_LEVEL=INFO
+    - ENV_FILE_PATH=/app/.env
+    - LLM_MODELS_HUB_DIR=/models/llm/hub
+    - INTERNET_TOOLS_ENABLED=${INTERNET_TOOLS_ENABLED:-false}
+    - SEARCH_PROVIDER=${SEARCH_PROVIDER:-searxng}
+    - SEARXNG_URL=${SEARXNG_URL:-}
+    - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+    - NAVER_CLIENT_ID=${NAVER_CLIENT_ID:-}
+    - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET:-}
+    - MCP_CONFIG_PATH=${MCP_CONFIG_PATH:-}
+    volumes:
+    - ./config/mcp:/app/config/mcp:ro
+    - backend-data:/data
+    - ${MODEL_CACHE_PATH:-./models}/llm/hub:/models/llm/hub:ro
+    - ./logs/backend:/app/logs
+    - ./services/backend/static:/app/static
+    - ./shared:/app/shared:ro
+    - ./.env:/app/.env:rw
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+    - 11000:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://localhost:8000/health')
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  postgres:
+    image: pgvector/pgvector:pg15
+    environment:
+    - POSTGRES_USER=edgevoice
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    - POSTGRES_DB=edgevoice
+    volumes:
+    - postgres-data:/var/lib/postgresql/data
+    - ./config/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U edgevoice -d edgevoice
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  searxng:
+    image: searxng/searxng:latest
+    profiles:
+    - search
+    environment:
+    - SEARXNG_BASE_URL=http://searxng:8080/
+    - SEARXNG_SECRET=${SEARXNG_SECRET:?set SEARXNG_SECRET in .env}
+    volumes:
+    - ./config/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    volumes:
+    - redis-data:/data
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+    - edgevoice-net
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+networks:
+  edgevoice-net:
+    driver: bridge
+    name: edgevoice-network
+volumes:
+  postgres-data:
+    name: edgevoice-postgres-data
+  redis-data:
+    name: edgevoice-redis-data
+  vectordb-data:
+    name: edgevoice-vectordb-data
+  backend-data:
+    name: edgevoice-backend-data
+  tts-hf-cache:
+    name: edgevoice-tts-hf-cache
+  stt-hf-cache:
+    name: edgevoice-stt-hf-cache
